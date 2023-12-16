@@ -1,4 +1,4 @@
-# Jack-s-Car-Rental
+# Jacks-Car-Rental
 - I use policy iteration and value iteration respectively to solve Jack's Car Rental.
 - Please run `main.py` to execute this program.
 - You can modify code in main.py `mode == test1` to test Policy Iteration or `mode == test2` to test Value Iteration.
