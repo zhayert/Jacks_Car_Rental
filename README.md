@@ -10,19 +10,19 @@
 
 #### 1. Policy iteration results
 
-<img src="./policy/1.png" style="zoom:50%"/>
+<img src="./img/policy0.png" style="zoom:40%"/>
 
-<img src="./policy/2.png" style="zoom:50%"/>
+<img src="./img/policy1.png" style="zoom:40%"/>
 
-<img src="./policy/3.png" style="zoom:50%"/>
+<img src="./img/policy2.png" style="zoom:40%"/>
 
-<img src="./policy/4.png" style="zoom:50%"/>
+<img src="./img/policy3.png" style="zoom:40%"/>
 
-<img src="./policy/5.png" style="zoom:50%"/>
+<img src="./img/policy4.png" style="zoom:40%"/>
 
 #### 2. Value iteration results
 
-<img src="./value/0.png" style="zoom:50%"/>
+<img src="./img/value0.png" style="zoom:40%"/>
 
 #### 3. Summary
 
