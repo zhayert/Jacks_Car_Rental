@@ -26,7 +26,9 @@ def draw_fig(
         max_move_num: int = 5) -> None:
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(121)
-    ax.matshow(policy, cmap=plt.cm.bwr, vmin=-max_move_num, vmax=max_move_num)
+    # ax.matshow(policy, cmap=plt.cm.plasma, vmin=-max_move_num, vmax=max_move_num)
+    # ax.matshow(policy, cmap=plt.cm.bwr, vmin=-max_move_num, vmax=max_move_num)
+    ax.matshow(policy, cmap=plt.cm.RdYlGn, vmin=-max_move_num, vmax=max_move_num)
     ax.set_xticks(range(max_car_num + 1))
     ax.set_yticks(range(max_car_num + 1))
     ax.invert_yaxis()
@@ -41,7 +43,9 @@ def draw_fig(
 
     y, x = np.meshgrid(range(max_car_num + 1), range(max_car_num + 1))
     ax = fig.add_subplot(122, projection='3d')
-    ax.scatter3D(y, x, value.T)
+    # ax.scatter3D(y, x, value.T,c="darkslategray")
+    # ax.scatter3D(y, x, value.T)
+    ax.scatter3D(y, x, value.T,c="goldenrod")
     ax.set_xlim3d(0, max_car_num)
     ax.set_ylim3d(0, max_car_num)
     ax.set_xlabel("Cars at second location")
@@ -98,23 +102,21 @@ class EnvironmentalModel(object):
         self.rent_return_pmf.append(build_rent_return_pmf(lam_rental2, lam_return2, max_cars))
         self.max_cars = max_cars
 
-    def get_transition_model(self, state: tuple, action: int) -> (dict, dict):
+    def get_transition_model(self, s: tuple, a: int) -> (dict, dict):
         """
         Return 2-tuple:
             1. p(s'| s, a) as dictionary:
-                keys = s'
-                values = p(s' | s, a)
+                keys = s' values = p(s' | s, a)
             2. E(r | s, a, s') as dictionary:
-                keys = s'
-                values = E(r | s, a, s')
+                keys = s' values = E(r | s, a, s')
         """
-        state = (state[0] - action, state[1] + action)  # move a cars from loc1 to loc2
-        move_cost = -math.fabs(action) * 2  # ($2) per car moved
+        s = (s[0] - a, s[1] + a)  # move a cars from loc1 to loc2
+        move_cost = -math.fabs(a) * 2  # ($2) per car moved
         # move_cost = -action * 2  # ($2) per car moved
         t_prob = [{}, {}]
         expected_r = [{}, {}]
         for loc in {0, 1}:
-            morning_cars = state[loc]
+            morning_cars = s[loc]
             rent_return_pmf = self.rent_return_pmf[loc]
             for rents in range(morning_cars + 1):
                 max_returns = self.max_cars - morning_cars + rents
@@ -122,10 +124,10 @@ class EnvironmentalModel(object):
                     prob = rent_return_pmf[morning_cars, rents, returns]
                     if prob < 1e-5:
                         continue
-                    state_prime = morning_cars - rents + returns
+                    s_prime = morning_cars - rents + returns
                     r = rents * 10
-                    t_prob[loc][state_prime] = t_prob[loc].get(state_prime, 0) + prob
-                    expected_r[loc][state_prime] = expected_r[loc].get(state_prime, 0) + prob * r
+                    t_prob[loc][s_prime] = t_prob[loc].get(s_prime, 0) + prob
+                    expected_r[loc][s_prime] = expected_r[loc].get(s_prime, 0) + prob * r
 
         # join probabilities and expectations from loc1 and loc2
         t_model = {}
@@ -148,46 +150,47 @@ def policy_iteration(
         states: list,
         values: np.ndarray,
         policy: np.ndarray,
-        jm: EnvironmentalModel,
-        theta: float = 0.5,
+        em: EnvironmentalModel,
+        theta: float = 0.1,
         gamma: float = 0.9,
-        max_cars: int = 20):
+        max_cars: int = 20) -> None:
     # Policy Iteration (using iterative policy evaluation)
     iteration = 0
     while (True):
+        i = 0
         print('\nPolicy at iteration = {}:'.format(iteration))
         # print(policy)
         print('\nPolicy evaluation iteration = {}. v(s) delta:'.format(iteration))
         # Policy Evaluation
-        for i in range(100):
+        while (True):
             delta = 0
             for state in states:
                 value = values[state]
-                t_model, r_model = jm.get_transition_model(state, policy[state])
+                t_model, r_model = em.get_transition_model(state, policy[state])
                 value_new = 0
-                for s_prime in t_model:
-                    p = t_model[s_prime]
-                    r = r_model[s_prime]
-                    value_new += p * (gamma * values[s_prime] + r)
+                for state_prime in t_model:
+                    p, r = t_model[state_prime], r_model[state_prime]
+                    value_new += p * (gamma * values[state_prime] + r)
                 values[state] = value_new
                 delta = max(delta, abs(value_new - value))
             print('Iteration {}: max delta = {:.2f}'.format(i, delta))
-            if delta < theta: break
+            i += 1
+            if delta < theta:
+                break
 
         # Policy Iteration
         stable = True
         for state in states:
             old_action = policy[state]
-            value_best = -1000
+            value_best = -100
             max_a = min(5, state[0], max_cars - state[1])
             min_a = max(-5, -state[1], -(max_cars - state[0]))
             for a in range(min_a, max_a + 1):
-                t_model, r_model = jm.get_transition_model(state, a)
                 value = 0
-                for s_prime in t_model:
-                    p = t_model[s_prime]
-                    r = r_model[s_prime]
-                    value += p * (gamma * values[s_prime] + r)
+                (t_model, r_model) = em.get_transition_model(state, a)
+                for state_prime in t_model:
+                    p, r = t_model[state_prime], r_model[state_prime]
+                    value += p * (gamma * values[state_prime] + r)
                 if value > value_best:
                     policy[state] = a
                     value_best = value
@@ -195,10 +198,17 @@ def policy_iteration(
                 stable = False
         draw_fig(values, policy, iteration, "policy")
         iteration += 1
-        if stable: return
+        if stable:
+            return
 
 
-def value_iteration(states, values, em, theta: float = 0.5, gamma: float = 0.9, max_cars: int = 20):
+def value_iteration(states: list,
+                    values: np.ndarray,
+                    policy: np.ndarray,
+                    em: EnvironmentalModel,
+                    theta: float = 0.1,
+                    gamma: float = 0.9,
+                    max_cars: int = 20) -> None:
     # Value Iteration
     value_best = -100
     # theta = 0.5  # value(s) delta stopping threshold
@@ -206,7 +216,7 @@ def value_iteration(states, values, em, theta: float = 0.5, gamma: float = 0.9, 
     iteration = 0
     while (True):
         delta = 0
-        value_old = values.copy()
+        values_old = values.copy()
         values = np.zeros((max_cars + 1, max_cars + 1))
         for state in states:
             value_best = -100
@@ -218,31 +228,18 @@ def value_iteration(states, values, em, theta: float = 0.5, gamma: float = 0.9, 
                 for state_prime in t_model:
                     p = t_model[state_prime]
                     r = r_model[state_prime]
-                    # must use previous iteration's value(s): value_old(s)
-                    value_new += p * (gamma * value_old[state_prime] + r)
+                    # must use previous iteration's values(state): value_olds(state)
+                    value_new += p * (gamma * values_old[state_prime] + r)
+                if value_new > value_best:
+                    policy[state] = a
+                    value_best = value_new
                 value_best = max(value_best, value_new)
             values[state] = value_best
-            delta = max(delta, abs(values[state] - value_old[state]))
+            delta = max(delta, abs(values[state] - values_old[state]))
         print('Iteration {}: max delta = {:.2f}'.format(iteration, delta))
         iteration += 1
         if delta < theta: break
 
-    # Extract policy from value(s)
-    policy = np.zeros((max_cars + 1, max_cars + 1), dtype=np.int16)
-    for state in states:
-        value_best = -1000
-        max_a = min(5, state[0], max_cars - state[1])
-        min_a = max(-5, -state[1], -(max_cars - state[0]))
-        for a in range(min_a, max_a + 1):
-            t_model, r_model = em.get_transition_model(state, a)
-            value = 0
-            for state_prime in t_model:
-                p = t_model[state_prime]
-                r = r_model[state_prime]
-                value += p * (gamma * values[state_prime] + r)
-            if value > value_best:
-                policy[state] = a
-                value_best = value
     print('\nValue iteration done, final policy:')
     print(policy)
-    draw_fig(value_best, policy, mode="value")
+    draw_fig(values, policy, mode="value")

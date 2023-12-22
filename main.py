@@ -21,17 +21,17 @@ em = EnvironmentalModel(lam_return1=3, lam_return2=2, lam_rental1=3, lam_rental2
 policy = np.zeros((max_cars + 1, max_cars + 1), dtype=np.int16)
 values = np.zeros((max_cars + 1, max_cars + 1))
 states = [(s0, s1) for s0 in range(max_cars + 1) for s1 in range(max_cars + 1)]
-# print(type(states[0]))
+# print(states)
 
 # Choose mode for policy iteration or value iteration
 test1 = "policy_iteration"
 test2 = "value_iteration"
-mode = test1
+mode = test2
 
 # Start iteration
 start_time = time.time()
 if mode == test1:
     policy_iteration(states, values, policy, em, theta)
 elif mode == test2:
-    value_iteration(states, values, em, theta)
+    value_iteration(states, values,policy, em, theta)
 print("\nTime: {:.2f} seconds".format(time.time() - start_time))
